@@ -9,6 +9,7 @@
 #   - Builds pwninit in release mode when Rust/cargo is available.
 #   - Links built pwninit binary to ~/.local/bin/pwninit.
 #   - Links all files under ./scripts to ~/.local/bin/<filename>.
+#   - Installs/updates vmlinux-to-elf via pipx when available.
 #   - If Rust is missing, prints a warning and continues.
 # ------------------------------------------------------------------------------
 
@@ -26,6 +27,20 @@ log() {
 
 warn() {
     printf '[setup] warning: %s\n' "$*" >&2
+}
+
+install_vmlinux_to_elf() {
+    if command -v pipx >/dev/null 2>&1; then
+        log "Installing vmlinux-to-elf via pipx"
+        if pipx install vmlinux-to-elf; then
+            log "Installed vmlinux-to-elf (pipx)"
+        else
+            warn "pipx install failed for vmlinux-to-elf"
+        fi
+        return 0
+    fi
+
+    warn "pipx not found; skipping vmlinux-to-elf install/update"
 }
 
 mkdir -p "${BIN_DIR}"
@@ -60,5 +75,7 @@ if [ -d "${SCRIPTS_DIR}" ]; then
 else
     warn "scripts directory not found: ${SCRIPTS_DIR}"
 fi
+
+install_vmlinux_to_elf
 
 log "Setup complete"
