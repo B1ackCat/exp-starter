@@ -64,6 +64,8 @@ need_arg() {
 require_tools() {
     command -v cpio >/dev/null 2>&1 || die "cpio not found"
     command -v find >/dev/null 2>&1 || die "find not found"
+    command -v od >/dev/null 2>&1 || die "od not found"
+    command -v tr >/dev/null 2>&1 || die "tr not found"
 }
 
 is_gz() {
@@ -83,6 +85,25 @@ default_archive() {
     return 1
 }
 
+archive_encoding_file() {
+    printf '%s\n' "${WORKDIR}/.archive_encoding"
+}
+
+archive_path_file() {
+    printf '%s\n' "${WORKDIR}/.archive_path"
+}
+
+detect_archive_encoding() {
+    archive="$1"
+    # gzip magic bytes: 1f 8b
+    magic="$(dd if="$archive" bs=2 count=1 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+    if [ "$magic" = "1f8b" ]; then
+        printf 'gzip\n'
+    else
+        printf 'raw\n'
+    fi
+}
+
 resolve_archive_for_unpack_or_inject() {
     if [ -n "$ARCHIVE_PATH" ]; then
         printf '%s\n' "$ARCHIVE_PATH"
@@ -96,11 +117,25 @@ resolve_archive_for_repack() {
         printf '%s\n' "$ARCHIVE_PATH"
         return 0
     fi
-    if [ -f "${WORKDIR}/.archive_path" ]; then
-        cat "${WORKDIR}/.archive_path"
+    if [ -f "$(archive_path_file)" ]; then
+        cat "$(archive_path_file)"
         return 0
     fi
     default_archive || die "archive not found (use --archive)"
+}
+
+resolve_archive_encoding_for_repack() {
+    archive="$1"
+    if [ -f "$(archive_encoding_file)" ]; then
+        cat "$(archive_encoding_file)"
+        return 0
+    fi
+    # Fallback when repack is called without a previous unpack in this workdir.
+    if is_gz "$archive"; then
+        printf 'gzip\n'
+    else
+        printf 'raw\n'
+    fi
 }
 
 load_paths() {
@@ -129,14 +164,19 @@ unpack_archive() {
 
     log "Unpacking ${archive} -> ${ROOTFS_DIR}"
 
-    if is_gz "$archive"; then
+    encoding="$(detect_archive_encoding "$archive")"
+    if [ "$encoding" = "gzip" ]; then
         command -v gzip >/dev/null 2>&1 || die "gzip not found for .gz archive"
-        gzip -dc "$archive" | (cd "$ROOTFS_DIR" && cpio -idmu --no-absolute-filenames >/dev/null 2>&1)
+        gzip -dc "$archive" | (cd "$ROOTFS_DIR" && cpio -idmu --no-absolute-filenames >/dev/null 2>&1) || die "failed to unpack gzip cpio archive: ${archive}"
     else
-        cat "$archive" | (cd "$ROOTFS_DIR" && cpio -idmu --no-absolute-filenames >/dev/null 2>&1)
+        if is_gz "$archive"; then
+            warn "${archive} ends with .gz but is not gzip data; treating as raw cpio"
+        fi
+        cat "$archive" | (cd "$ROOTFS_DIR" && cpio -idmu --no-absolute-filenames >/dev/null 2>&1) || die "failed to unpack raw cpio archive: ${archive}"
     fi
 
-    printf '%s\n' "$archive" > "${WORKDIR}/.archive_path"
+    printf '%s\n' "$archive" > "$(archive_path_file)"
+    printf '%s\n' "$encoding" > "$(archive_encoding_file)"
     log "Done. Edit files under: ${ROOTFS_DIR}"
 }
 
@@ -147,12 +187,16 @@ repack_archive() {
     [ -d "$ROOTFS_DIR" ] || die "extracted rootfs not found: ${ROOTFS_DIR} (run unpack first)"
 
     tmp_out="${archive}.tmp.$$"
+    encoding="$(resolve_archive_encoding_for_repack "$archive")"
     log "Repacking ${ROOTFS_DIR} -> ${archive}"
 
-    if is_gz "$archive"; then
-        command -v gzip >/dev/null 2>&1 || die "gzip not found for .gz archive"
+    if [ "$encoding" = "gzip" ]; then
+        command -v gzip >/dev/null 2>&1 || die "gzip not found for gzip archive"
         (cd "$ROOTFS_DIR" && find . -print | cpio -o -H newc 2>/dev/null) | gzip -c > "$tmp_out"
     else
+        if is_gz "$archive"; then
+            warn "${archive} ends with .gz but original archive was raw cpio; keeping raw cpio output"
+        fi
         (cd "$ROOTFS_DIR" && find . -print | cpio -o -H newc 2>/dev/null) > "$tmp_out"
     fi
 
