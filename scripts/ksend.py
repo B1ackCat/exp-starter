@@ -2,8 +2,8 @@
 # ------------------------------------------------------------------------------
 # ksend.py - Upload a local exploit binary to a remote shell target
 #
-# Author: Axura
-# Website: https://4xura.com
+# Author: BlackCat
+# Website: https://b1ackcat.com
 #
 # Description:
 #   - Designed for CTF/pwn workflows where direct file transfer is unavailable.
