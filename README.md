@@ -48,7 +48,7 @@ If `~/.local/bin` is not in your `PATH`, add it in your shell config.
 pwninit
 ```
 
-This usually patches the binary, fetches compatible loader artifacts, and generates a `solve.py` skeleton.
+This usually patches the binary, fetches compatible loader artifacts, and generates a `ex.py` skeleton.
 
 ### 2) Kernel pwn quick loop
 
