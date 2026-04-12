@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+import sys
 from pwn import *
 
 context(arch="amd64", os="linux", endian="little")
@@ -18,14 +20,24 @@ rvn = lambda n: p.recvn(n)
 
 
 def start(e):
-    # ./exp.py <host> <port>
+    # ./ex.py <host> <port>
     if len(sys.argv) >= 3:
         host, port = sys.argv[1], sys.argv[2]
         log.info(f"Running remote @ {{host}}:{{port}}...")
         return remote(host, int(port))
 
+    if args.REMOTE:
+        host = args.HOST or "127.0.0.1"
+        port = int(args.PORT or 1337)
+        log.info(f"Running remote @ {{host}}:{{port}}...")
+        return remote(host, port)
+
+    if args.GDB:
+        log.info("Running local with GDB...")
+        return gdb.debug({proc_args}, gdbscript=gs)
+
     log.info(f"Running local...")
-    return process(e.path)
+    return process({proc_args})
 
 
 # -------------- Heap exploit --------------
@@ -50,8 +62,13 @@ def show():
 
 
 # ---------------- exploit ----------------
-{bindings}
-libc = e.libc
-p = start(e)
+def exploit():
+    pass
 
-p.interactive()
+
+if __name__ == "__main__":
+    {bindings}
+    libc = e.libc
+    p = start(e)
+
+    exploit()
