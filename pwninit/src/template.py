@@ -18,6 +18,8 @@ rl = lambda: p.recvline()
 ru = lambda d: p.recvuntil(_b(d))
 rvn = lambda n: p.recvn(n)
 
+uu64 = lambda d: u64(d.lust(8, b"\x00"))
+
 
 def start(e):
     # ./ex.py <host> <port>
