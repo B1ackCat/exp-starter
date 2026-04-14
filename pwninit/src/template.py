@@ -28,18 +28,8 @@ def start(e):
         log.info(f"Running remote @ {{host}}:{{port}}...")
         return remote(host, int(port))
 
-    if args.REMOTE:
-        host = args.HOST or "127.0.0.1"
-        port = int(args.PORT or 1337)
-        log.info(f"Running remote @ {{host}}:{{port}}...")
-        return remote(host, port)
-
-    if args.GDB:
-        log.info("Running local with GDB...")
-        return gdb.debug({proc_args}, gdbscript=gs)
-
     log.info(f"Running local...")
-    return process({proc_args})
+    return process(e.path)
 
 
 # -------------- Heap exploit --------------
