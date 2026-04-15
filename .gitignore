@@ -3,3 +3,4 @@ pwninit/target/
 .codex
 __pycache__/
 *.pyc
+explib.egg-info/

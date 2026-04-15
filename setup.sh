@@ -43,6 +43,44 @@ install_vmlinux_to_elf() {
     warn "pipx not found; skipping vmlinux-to-elf install/update"
 }
 
+confirm_explib_install() {
+    if [ ! -t 0 ]; then
+        warn "non-interactive shell; skipping editable explib install"
+        return 1
+    fi
+
+    printf '[setup] Install explib in editable mode now? [y/N] '
+    read -r answer
+
+    case "${answer}" in
+        y|Y|yes|YES)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+install_explib_editable() {
+    if command -v python3 >/dev/null 2>&1; then
+        if ! confirm_explib_install; then
+            log "Skipping editable explib install"
+            return 0
+        fi
+
+        log "Installing explib in editable mode (pip install -e . --break-system-packages)"
+        if (cd "${ROOT_DIR}" && python3 -m pip install -e . --break-system-packages); then
+            log "Installed explib in editable mode (--break-system-packages)"
+        else
+            warn "failed to install explib in editable mode"
+        fi
+        return 0
+    fi
+
+    warn "python3 not found; skipping editable explib install"
+}
+
 mkdir -p "${BIN_DIR}"
 log "Using bin directory: ${BIN_DIR}"
 
@@ -77,5 +115,6 @@ else
 fi
 
 install_vmlinux_to_elf
+install_explib_editable
 
 log "Setup complete"
