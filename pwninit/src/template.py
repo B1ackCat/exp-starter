@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-from pwn import *
+from pwn import ELF
 from explib import Exploit as BaseExploit
+from explib import configure_context
 
-context(arch="amd64", os="linux", endian="little")
-context.terminal = "tmux split-window -h -p 65 -b".split()
+configure_context()
 
 
 class Exploit(BaseExploit):
