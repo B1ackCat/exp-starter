@@ -39,6 +39,12 @@ What `setup.sh` does:
 
 If `~/.local/bin` is not in your `PATH`, add it in your shell config.
 
+To use `explib` in generated `ex.py` templates:
+
+```bash
+pip install -e .
+```
+
 ## Typical workflows
 
 ### 1) Userland pwn setup with pwninit

@@ -1,3 +1,5 @@
 # pwninit build artifacts
 pwninit/target/
 .codex
+__pycache__/
+*.pyc
