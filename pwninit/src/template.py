@@ -2,21 +2,36 @@
 from pwn import ELF
 from explib import Exploit as BaseExploit
 from explib import configure_context
+from explib import gdb
 
 configure_context()
 
 
-class Exploit(BaseExploit):
-    """
-    Available in exploit() without self:
-    sendlineafter/sendafter/sendline/send, recvline/recvuntil/recvn/recv, interactive
-    shorthand: sla/sa/sl/s, rl/ru/rvn/r, plus uu64/lg and e/libc
-    example: sendlineafter(b"> ", b"1")
-    example: sla(b"> ", b"1")
-    """
+# -------------- menu helpers -----------------
+def menu():
+    pass
 
+
+def alloc():
+    pass
+
+
+def free():
+    pass
+
+
+def edit():
+    pass
+
+
+def show():
+    pass
+
+
+class Exploit(BaseExploit):
     # ---------------- exploit ----------------
     def exploit(self):
+        # gdb("b *main\\nc")
         pass
 
 
