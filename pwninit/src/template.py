@@ -31,7 +31,6 @@ def show():
 class Exploit(BaseExploit):
     # ---------------- exploit ----------------
     def exploit(self):
-        # gdb("b *main\\nc")
         pass
 
 
