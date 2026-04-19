@@ -1,11 +1,15 @@
 from contextlib import contextmanager
-from typing import Any
-from typing import Dict
-from typing import Iterator
-from typing import Mapping
-from typing import MutableMapping
+from typing import Any, Dict, Iterator, Mapping, MutableMapping
 
 from pwn import log, u64
+
+
+def to_bytes(value: Any) -> bytes:
+    return value if isinstance(value, bytes) else str(value).encode()
+
+
+def unpack_u64(data: bytes) -> int:
+    return u64(data.ljust(8, b"\x00"))
 
 
 class ShortcutNamespace:
@@ -17,43 +21,27 @@ class ShortcutNamespace:
         self.libc = libc
 
     @staticmethod
-    def to_bytes(value: Any) -> bytes:
-        return value if isinstance(value, bytes) else str(value).encode()
-
-    @staticmethod
-    def unpack_u64(data: bytes) -> int:
-        return u64(data.ljust(8, b"\x00"))
-
-    @staticmethod
     def log_value(key: str, value: Any) -> None:
         log.info(f"{key} @ {value}")
 
-    @classmethod
-    def _normalize_delims(cls, delims: Any) -> Any:
-        if isinstance(delims, tuple):
-            return tuple(cls.to_bytes(d) for d in delims)
-        if isinstance(delims, list):
-            return [cls.to_bytes(d) for d in delims]
-        return cls.to_bytes(delims)
-
     def send(self, data: Any, *args: Any, **kwargs: Any) -> Any:
-        return self.io.send(self.to_bytes(data), *args, **kwargs)
+        return self.io.send(to_bytes(data), *args, **kwargs)
 
     def sendline(self, data: Any = b"", *args: Any, **kwargs: Any) -> Any:
-        return self.io.sendline(self.to_bytes(data), *args, **kwargs)
+        return self.io.sendline(to_bytes(data), *args, **kwargs)
 
     def sendafter(self, delim: Any, data: Any, *args: Any, **kwargs: Any) -> Any:
-        return self.io.sendafter(
-            self.to_bytes(delim), self.to_bytes(data), *args, **kwargs
-        )
+        return self.io.sendafter(to_bytes(delim), to_bytes(data), *args, **kwargs)
 
     def sendlineafter(self, delim: Any, data: Any, *args: Any, **kwargs: Any) -> Any:
-        return self.io.sendlineafter(
-            self.to_bytes(delim), self.to_bytes(data), *args, **kwargs
-        )
+        return self.io.sendlineafter(to_bytes(delim), to_bytes(data), *args, **kwargs)
 
     def recvuntil(self, delims: Any, *args: Any, **kwargs: Any) -> Any:
-        return self.io.recvuntil(self._normalize_delims(delims), *args, **kwargs)
+        if isinstance(delims, (list, tuple)):
+            delims = type(delims)(to_bytes(d) for d in delims)
+        else:
+            delims = to_bytes(delims)
+        return self.io.recvuntil(delims, *args, **kwargs)
 
     def mapping(self) -> Dict[str, Any]:
         return {
@@ -75,10 +63,10 @@ class ShortcutNamespace:
             "r": self.io.recv,
             "rl": self.io.recvline,
             "ru": self.recvuntil,
-            "rvn": self.io.recvn,
+            "rn": self.io.recvn,
             # convenience helpers
-            "to_bytes": self.to_bytes,
-            "uu64": self.unpack_u64,
+            "to_bytes": to_bytes,
+            "uu64": unpack_u64,
             "lg": self.log_value,
             "e": self.elf,
             "io": self.io,

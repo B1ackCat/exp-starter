@@ -1,9 +1,6 @@
 import sys
 from dataclasses import dataclass
-from typing import Any
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
+from typing import Any, Optional, Sequence, Tuple
 
 from pwn import log, process, remote
 
@@ -28,7 +25,7 @@ class Connector:
     def connect(self):
         if self.remote_host is not None and self.remote_port is not None:
             log.info(f"Running remote @ {self.remote_host}:{self.remote_port}...")
-            return remote(self.remote_host, int(self.remote_port))
+            return remote(self.remote_host, self.remote_port)
 
         log.info("Running local...")
         argv = [self.elf.path, *self.local_argv]
@@ -55,20 +52,19 @@ class Connector:
                 local_argv=tuple(user_args),
             )
 
-        host, port, rest = remote_args
+        host, port = remote_args
         return cls(
             elf=elf,
             libc=inferred_libc,
             ld=ld,
             remote_host=host,
             remote_port=port,
-            local_argv=tuple(rest),
         )
 
     @staticmethod
     def _parse_remote_args(
         args: Sequence[str],
-    ) -> Optional[Tuple[str, int, Sequence[str]]]:
+    ) -> Optional[Tuple[str, int]]:
         # style: host:port [extra...]
         if args and ":" in args[0]:
             host, port_str = args[0].rsplit(":", 1)
@@ -78,7 +74,7 @@ class Connector:
                 port = int(port_str)
             except ValueError as exc:
                 raise ValueError(f"invalid remote endpoint: {args[0]}") from exc
-            return host, port, args[1:]
+            return host, port
 
         # style: host port [extra...]
         if len(args) >= 2:
@@ -86,6 +82,6 @@ class Connector:
                 port = int(args[1])
             except ValueError:
                 return None
-            return args[0], port, args[2:]
+            return args[0], port
 
         return None

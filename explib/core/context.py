@@ -1,6 +1,4 @@
-from typing import Iterable
-from typing import Optional
-from typing import Union
+from typing import Iterable, Optional, Union
 
 from pwn import context
 
@@ -14,7 +12,7 @@ def configure_context(
     endian: str = "little",
     terminal: Optional[Union[str, Iterable[str]]] = DEFAULT_TERMINAL,
 ) -> None:
-    context(arch=arch, os=os, endian=endian)
+    context.update(arch=arch, os=os, endian=endian)
     if terminal is None:
         return
     if isinstance(terminal, str):

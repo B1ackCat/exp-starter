@@ -2,6 +2,7 @@
 from pwn import *
 from explib import *
 
+# arch, os, little, terminal
 configure_context()
 
 
