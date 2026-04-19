@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-from pwn import ELF
-from explib import Exploit as BaseExploit
-from explib import configure_context
-from explib import gdb
+from pwn import *
+from explib import *
 
 configure_context()
 
@@ -28,12 +26,11 @@ def show():
     pass
 
 
-class Exploit(BaseExploit):
-    # ---------------- exploit ----------------
-    def exploit(self):
-        pass
+# ---------------- exploit --------------------
+def exploit():
+    pass
 
 
 if __name__ == "__main__":
     {bindings}
-    Exploit({bin_name}).run()
+    Exploit({bin_name}).run(exploit)
