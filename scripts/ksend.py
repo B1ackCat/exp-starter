@@ -9,82 +9,88 @@
 #   - Designed for CTF/pwn workflows where direct file transfer is unavailable.
 #   - Connects to <host>:<port> using pwntools and uploads a local binary by
 #     base64-encoding it and appending chunked data on the remote shell.
-#   - Rebuilds the binary at /tmp/exploit (`base64 -d`) and sets executable
-#     permission with `chmod +x`.
+#   - Rebuilds the binary at the destination path (`base64 -d`) and sets
+#     executable permission with `chmod +x`.
 #   - Drops into interactive mode after upload so you can run exploit commands
 #     manually.
 #
 # Usage:
-#   ./ksend.py <host> <port> <file>
+#   ./ksend.py <host> <port> <file> [options]
 #
 # Arguments:
 #   host              Target host/IP.
 #   port              Target TCP port.
 #   file              Local binary path to upload.
 #
-# Notes:
-#   - Assumes remote shell prompt is `$ ` (used by `sendlineafter`).
-#   - Upload chunk size is 512 bytes (base64 text).
-#   - Script prepares `/tmp/exploit` but does not execute it automatically.
+# Options:
+#   --dest PATH       Remote destination path (default: /tmp/exploit)
+#   --prompt STR      Remote shell prompt string (default: "$ ")
+#   --chunk N         Base64 chunk size in bytes (default: 512)
+#   --exec            Execute the binary after upload
 # ------------------------------------------------------------------------------
 
 from pwn import *
+import argparse
 import base64
-import sys
 import os
 
 context.log_level = "info"
 
 
-def usage():
-    """
-    Print CLI usage and exit.
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="ksend.py",
+        description="Upload a local exploit binary to a remote shell target",
+    )
+    parser.add_argument("host", help="Target host/IP")
+    parser.add_argument("port", type=int, help="Target TCP port")
+    parser.add_argument("file", help="Local binary path to upload")
+    parser.add_argument("--dest", default="/tmp/exploit", help="Remote destination path (default: /tmp/exploit)")
+    parser.add_argument("--prompt", default="$ ", help='Remote shell prompt (default: "$ ")')
+    parser.add_argument("--chunk", type=int, default=512, help="Base64 chunk size in bytes (default: 512)")
+    parser.add_argument("--exec", dest="execute", action="store_true", help="Execute the binary after upload")
+    return parser.parse_args()
 
-    Args:
-        host: Target host or IP address.
-        port: Target TCP port (integer).
-        file: Local exploit binary path to upload.
 
-    Example:
-        ./ksend.py 127.0.0.1 1337 ./exploit
-    """
-    print("Usage: ksend.py <host> <port> <file>")
-    sys.exit(1)
+args = parse_args()
 
+if not os.path.exists(args.file):
+    log.error(f"File not found: {args.file}")
 
-if len(sys.argv) != 4:
-    usage()
-
-host = sys.argv[1]
-port = int(sys.argv[2])
-file_path = sys.argv[3]
-
-if not os.path.exists(file_path):
-    log.error(f"File not found: {file_path}")
-    sys.exit(1)
+dest = args.dest
+dest_dir = os.path.dirname(dest) or "/tmp"
+dest_name = os.path.basename(dest)
+prompt = args.prompt.encode()
 
 
 def run(cmd):
-    p.sendlineafter("$ ", cmd)
+    p.sendlineafter(prompt, cmd)
     p.recvline()
 
 
-with open(file_path, "rb") as f:
+with open(args.file, "rb") as f:
     raw = f.read()
 
 payload = base64.b64encode(raw).decode()
+total = len(payload)
 
-p = remote(host, port)
+p = remote(args.host, args.port)
 
-run("cd /tmp")
+run(f"cd {dest_dir}")
 
-log.info("Uploading...")
-for i in range(0, len(payload), 512):
-    log.info(f"Uploading... {i:x} / {len(payload):x}")
-    run(f'echo "{payload[i:i+512]}" >> b64exp')
+b64_tmp = f"b64_{dest_name}"
+log.info(f"Uploading {args.file} -> {dest} ({len(raw)} bytes)")
+for i in range(0, total, args.chunk):
+    log.info(f"Uploading... {i:x} / {total:x}")
+    run(f'echo "{payload[i:i+args.chunk]}" >> {b64_tmp}')
 
-run("base64 -d b64exp > exploit")
-run("rm b64exp")
-run("chmod +x exploit")
+run(f"base64 -d {b64_tmp} > {dest_name}")
+run(f"rm {b64_tmp}")
+run(f"chmod +x {dest_name}")
+log.success(f"Upload complete: {dest}")
+
+if args.execute:
+    log.info(f"Executing {dest}")
+    run(dest)
 
 p.interactive()
